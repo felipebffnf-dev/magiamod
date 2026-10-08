@@ -16,6 +16,8 @@ public class ManaManager {
 
     private static final Map<UUID, Float> MANA = new HashMap<>();
     private static final Map<UUID, Integer> LAST_SENT = new HashMap<>();
+    private static final Map<UUID, Spell> SELECTED = new HashMap<>();
+    private static final Map<UUID, Map<Spell, Long>> READY_AT = new HashMap<>();
 
     public static float get(UUID id) {
         return MANA.getOrDefault(id, MAX_MANA);
@@ -30,6 +32,29 @@ public class ManaManager {
         return true;
     }
 
+    public static Spell getSpell(UUID id) {
+        return SELECTED.getOrDefault(id, Spell.BOLA_DE_FOGO);
+    }
+
+    public static void cycleSpell(ServerPlayerEntity player) {
+        UUID id = player.getUuid();
+        SELECTED.put(id, getSpell(id).proxima());
+        LAST_SENT.remove(id); // força reenviar para o cliente
+    }
+
+    public static boolean isReady(ServerPlayerEntity player, Spell spell) {
+        Map<Spell, Long> map = READY_AT.get(player.getUuid());
+        if (map == null || !map.containsKey(spell)) {
+            return true;
+        }
+        return player.getWorld().getTime() >= map.get(spell);
+    }
+
+    public static void startCooldown(ServerPlayerEntity player, Spell spell) {
+        READY_AT.computeIfAbsent(player.getUuid(), k -> new HashMap<>())
+                .put(spell, player.getWorld().getTime() + spell.cooldown);
+    }
+
     public static void tick(MinecraftServer server) {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             UUID id = player.getUuid();
@@ -37,12 +62,15 @@ public class ManaManager {
             MANA.put(id, current);
 
             int shown = (int) current;
+            Spell spell = getSpell(id);
+            int key = shown * 10 + spell.ordinal();
             Integer last = LAST_SENT.get(id);
-            if (last == null || last != shown) {
-                LAST_SENT.put(id, shown);
+            if (last == null || last != key) {
+                LAST_SENT.put(id, key);
                 PacketByteBuf buf = PacketByteBufs.create();
                 buf.writeInt(shown);
                 buf.writeInt((int) MAX_MANA);
+                buf.writeInt(spell.ordinal());
                 ServerPlayNetworking.send(player, MagiaMod.MANA_PACKET, buf);
             }
         }
