@@ -28,7 +28,9 @@ public class MagiaMod implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(ManaManager::tick);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
                 ManaManager.forgetSync(handler.getPlayer().getUuid()));
-        ServerPlayNetworking.registerGlobalReceiver(CYCLE_PACKET, (server, player, handler, buf, responseSender) ->
-                server.execute(() -> ManaManager.cycleSpell(player)));
+        ServerPlayNetworking.registerGlobalReceiver(CYCLE_PACKET, (server, player, handler, buf, responseSender) -> {
+            boolean trocarEscola = buf.readBoolean();
+            server.execute(() -> ManaManager.cycleSpell(player, trocarEscola));
+        });
     }
 }
