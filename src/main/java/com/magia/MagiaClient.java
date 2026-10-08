@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.network.PacketByteBuf;
 import org.lwjgl.glfw.GLFW;
 
 public class MagiaClient implements ClientModInitializer {
@@ -16,19 +17,29 @@ public class MagiaClient implements ClientModInitializer {
     public static int maxMana = 100;
     public static int magiaAtual = 0;
 
-    private static KeyBinding teclaTrocar;
+    private static KeyBinding teclaMagia;
+    private static KeyBinding teclaEscola;
 
     @Override
     public void onInitializeClient() {
-        teclaTrocar = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        teclaMagia = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.magiamod.trocar_magia",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_R,
                 "category.magiamod"));
 
+        teclaEscola = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.magiamod.trocar_escola",
+                InputUtil.Type.KEYSYM,
+                GLFW.GLFW_KEY_G,
+                "category.magiamod"));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (teclaTrocar.wasPressed()) {
-                ClientPlayNetworking.send(MagiaMod.CYCLE_PACKET, PacketByteBufs.create());
+            while (teclaMagia.wasPressed()) {
+                enviarTroca(false);
+            }
+            while (teclaEscola.wasPressed()) {
+                enviarTroca(true);
             }
         });
 
@@ -64,7 +75,15 @@ public class MagiaClient implements ClientModInitializer {
 
             Spell[] todas = Spell.values();
             Spell atual = todas[Math.min(magiaAtual, todas.length - 1)];
-            ctx.drawText(mc.textRenderer, "Magia: " + atual.nome + " (" + (int) atual.custo + ")", x, y - 20, 0xFFFFD27F, true);
+            ctx.drawText(mc.textRenderer,
+                    atual.escola.nome + ": " + atual.nome + " (" + (int) atual.custo + ")",
+                    x, y - 20, atual.escola.cor, true);
         });
+    }
+
+    private static void enviarTroca(boolean trocarEscola) {
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBoolean(trocarEscola);
+        ClientPlayNetworking.send(MagiaMod.CYCLE_PACKET, buf);
     }
 }
