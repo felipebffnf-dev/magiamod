@@ -36,9 +36,11 @@ public class ManaManager {
         return SELECTED.getOrDefault(id, Spell.BOLA_DE_FOGO);
     }
 
-    public static void cycleSpell(ServerPlayerEntity player) {
+    /** trocarEscola = true: vai para a próxima escola. false: próxima magia da escola atual. */
+    public static void cycleSpell(ServerPlayerEntity player, boolean trocarEscola) {
         UUID id = player.getUuid();
-        SELECTED.put(id, getSpell(id).proxima());
+        Spell atual = getSpell(id);
+        SELECTED.put(id, trocarEscola ? atual.proximaEscola() : atual.proximaNaEscola());
         LAST_SENT.remove(id); // força reenviar para o cliente
     }
 
@@ -63,7 +65,7 @@ public class ManaManager {
 
             int shown = (int) current;
             Spell spell = getSpell(id);
-            int key = shown * 10 + spell.ordinal();
+            int key = shown * 100 + spell.ordinal();
             Integer last = LAST_SENT.get(id);
             if (last == null || last != key) {
                 LAST_SENT.put(id, key);
